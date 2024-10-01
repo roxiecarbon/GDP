@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Provide the URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/yourusername/yourrepo/raw/main/nvda_us_d.xlsx'
+file_url = 'https://github.com/roxiecarbon/GDP/blob/main/nvda_us_d.xlsx'
 
 # Load the Excel file from GitHub URL
 df = pd.read_excel(file_url)
