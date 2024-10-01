@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import time
 
 # Provide the correct raw URL of the Excel file hosted on GitHub
 file_url = 'https://github.com/roxiecarbon/GDP/raw/main/nvda_us_d.xlsx'
@@ -59,39 +58,38 @@ fig.update_layout(
 # Add frames to the figure
 fig.frames = frames
 
-# Add a delay (e.g., 1 second) before starting the animation automatically
-time.sleep(1)
-
-# Start the animation after 1 second by simulating a click on the 'Play' button
-fig.update_layout(updatemenus=[{
-    'type': 'buttons',
-    'buttons': [
-        {
-            'label': 'Play',
-            'method': 'animate',
-            'args': [None, {
-                'frame': {'duration': 50, 'redraw': True},
-                'fromcurrent': True, 'mode': 'immediate'
-            }]
-        },
-        {
-            'label': 'Pause',
-            'method': 'animate',
-            'args': [[None], {
-                'frame': {'duration': 0, 'redraw': False},
-                'mode': 'immediate'
-            }]
-        }
-    ],
-    'direction': 'left',
-    'pad': {'r': 10, 't': 87},
-    'showactive': False,
-    'x': 0.1,
-    'xanchor': 'right',
-    'y': 0,
-    'yanchor': 'top',
-    'active': 0  # Automatically set the play button as active
-}])
+# Auto-trigger the Play button on each input change
+fig.update_layout(
+    updatemenus=[{
+        'type': 'buttons',
+        'buttons': [
+            {
+                'label': 'Play',
+                'method': 'animate',
+                'args': [None, {
+                    'frame': {'duration': 50, 'redraw': True},
+                    'fromcurrent': True, 'mode': 'immediate'
+                }]
+            },
+            {
+                'label': 'Pause',
+                'method': 'animate',
+                'args': [[None], {
+                    'frame': {'duration': 0, 'redraw': False},
+                    'mode': 'immediate'
+                }]
+            }
+        ],
+        'direction': 'left',
+        'pad': {'r': 10, 't': 87},
+        'showactive': False,
+        'x': 0.1,
+        'xanchor': 'right',
+        'y': 0,
+        'yanchor': 'top',
+        'active': 0  # Automatically set the play button as active
+    }]
+)
 
 # Display the interactive Plotly chart in Streamlit
 st.plotly_chart(fig)
