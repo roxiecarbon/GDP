@@ -6,7 +6,7 @@ import plotly.express as px
 st.title("GDP per Capita Choropleth Dashboard")
 
 # Provide the correct raw URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/roxiecarbon/GDP/raw/main/imf-dm-export-20241003.xlsx'
+file_url = 'https://github.com/roxiecarbon/GDP/raw/main/imf-dm-export-20240924.xlsx'
 
 # Load the Excel file from the GitHub URL
 df = pd.read_excel(file_url)
@@ -16,7 +16,7 @@ df.replace('no data', pd.NA, inplace=True)
 df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
 
 # Continue with the melting, renaming, and plotting code
-df_melted = pd.melt(df, id_vars=['GDP per capita, current prices (U.S. dollars per capita)'], 
+df_melted = pd.melt(df, id_vars=['GDP per capita, current prices (Purchasing power parity; international dollars per capita)'], 
                     var_name='Year', 
                     value_name='GDP per capita')
 
