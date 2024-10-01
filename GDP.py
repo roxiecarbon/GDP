@@ -16,7 +16,7 @@ df.replace('no data', pd.NA, inplace=True)
 df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
 
 # Continue with the melting, renaming, and plotting code
-df_melted = pd.melt(df, id_vars=['GDP per capita, current prices (Purchasing power parity; international dollars per capita)'], 
+df_melted = pd.melt(df, id_vars=['GDP per capita, current prices (U.S. dollars per capita)'], 
                     var_name='Year', 
                     value_name='GDP per capita')
 
