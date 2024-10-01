@@ -56,7 +56,7 @@ fig.update_layout(
         'yanchor': 'top'
     }],
     # Set the width and height of the figure to make it larger
-    width=1400,   # You can adjust this value
+    width=2400,   # You can adjust this value
     height=900,  # You can adjust this value
     margin={"r":0,"t":50,"l":0,"b":0},  # Optional: reduce margins
 )
