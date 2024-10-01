@@ -57,7 +57,7 @@ fig.update_layout(
     }],
     # Set the width and height of the figure to make it larger
     width=2400,   # You can adjust this value
-    height=900,  # You can adjust this value
+    height=1900,  # You can adjust this value
     margin={"r":0,"t":50,"l":0,"b":0},  # Optional: reduce margins
 )
 
