@@ -18,7 +18,7 @@ df['Date'] = pd.to_datetime(df['Date'])
 st.title('NVIDIA Stock Investment Growth Over Time')
 
 # Input for the investment amount
-investment_amount = st.number_input('Enter Investment Amount', value=120000000)
+investment_amount = st.number_input('Enter Investment Amount', value=1000000)
 
 # Calculate the number of shares purchased based on the input investment amount
 initial_price = df['Open'].iloc[0]
