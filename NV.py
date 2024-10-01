@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# Provide the URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/roxiecarbon/GDP/blob/main/nvda_us_d.xlsx'
+# Provide the correct raw URL of the Excel file hosted on GitHub
+file_url = 'https://github.com/roxiecarbon/GDP/raw/main/nvda_us_d.xlsx'
 
-# Load the Excel file from GitHub URL
-df = pd.read_excel(file_url)
+# Load the Excel file from GitHub URL using openpyxl as the engine
+df = pd.read_excel(file_url, engine='openpyxl')
 
 # Rename columns to English for easier processing
 df.columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
