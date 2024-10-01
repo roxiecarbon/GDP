@@ -55,11 +55,11 @@ fig.update_layout(
         'y': 0,
         'yanchor': 'top'
     }],
-    # Set the width and height of the figure to make it larger
-    width=9400,   # You can adjust this value
-    height=600,  # You can adjust this value
-    margin={"r":0,"t":50,"l":0,"b":0},  # Optional: reduce margins
+    # Increase the width and height to make it look larger, close to full-screen
+    width=1200,   # Adjust as needed
+    height=700,  # Adjust as needed
+    margin={"r":0,"t":50,"l":0,"b":0},  # Reduce margins to get more space
 )
 
 # Display the interactive Plotly chart in Streamlit
-st.plotly_chart(fig)
+st.plotly_chart(fig, use_container_width=True)
