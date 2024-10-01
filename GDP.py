@@ -6,7 +6,7 @@ import plotly.express as px
 st.title("GDP per Capita Choropleth Dashboard")
 
 # Provide the URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/roxiecarbon/GDP/blob/main/imf-dm-export-20241001.xls'
+file_url = 'https://github.com/roxiecarbon/GDP/blob/main/imf-dm-export-20241001.xlsx'
 
 # Load the Excel file from the GitHub URL
 df = pd.read_excel(file_url)
