@@ -1,8 +1,4 @@
 import pandas as pd
-import dash
-from dash import dcc, html
-from dash.dash_table import DataTable
-from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import streamlit as st
 # Provide the correct raw URL of the Excel file hosted on GitHub
