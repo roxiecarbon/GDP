@@ -1,65 +1,175 @@
-import streamlit as st
 import pandas as pd
-import plotly.express as px
-
-# Title of the app
-st.title("GDP per Capita Choropleth Dashboard")
-
-# Provide the correct raw URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/roxiecarbon/GDP/raw/main/imf-dm-export-20240924.xlsx'
+import plotly.graph_objs as go
+import streamlit as st
 
 # Load the Excel file from the GitHub URL
+file_url = 'https://github.com/roxiecarbon/GDP/raw/main/Zeszyt1.xlsx'
 df = pd.read_excel(file_url)
 
-# Rest of your existing code remains unchanged
-df.replace('no data', pd.NA, inplace=True)
-df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce')
+# Convert the 'Wynik' column to string
+df['Wynik'] = df['Wynik'].astype(str)
 
-# Continue with the melting, renaming, and plotting code
-df_melted = pd.melt(df, id_vars=['GDP per capita, current prices (Purchasing power parity; international dollars per capita)'], 
-                    var_name='Year', 
-                    value_name='GDP per capita')
+# Assigned team colors
+team_colors = {
+    'Stal Rzeszów ': 'blue',  
+    'Arka Gdynia ': 'yellow',           
+    'Miedź Legnica ': 'green',           
+    'Chrobry Głogów ': 'orange',       
+    'Motor Lublin ': 'yellow',          
+    'Znicz Pruszków ': 'red',                  
+    'Polonia Warszawa ': 'black',              
+    'Górnik Łęczna ': 'green',           
+    'Podbeskidzie Bielsko:Biała ': 'red',             
+    'Zagłębie Sosnowiec ': 'green',     
+    'Lechia Gdańsk ': 'white',           
+    'GKS Katowice': 'yellow',          
+    'Bruk:Bet Termalica Nieciecza ': 'orange',               
+    'Wisła Kraków ': 'red',         
+    'Wisła Płock ': 'blue',            
+    'Resovia ': 'red',          
+}
 
-df_melted.columns = ['Country', 'Year', 'GDP per capita']
-df_melted = df_melted.dropna()
-df_melted['Year'] = df_melted['Year'].astype(str)
-df_melted['GDP per capita'] = pd.to_numeric(df_melted['GDP per capita'], errors='coerce')
+# Function to calculate points based on match result
+def calculate_points(home_goals, away_goals):
+    if home_goals > away_goals:
+        return 3, 0  
+    elif home_goals < away_goals:
+        return 0, 3  
+    else:
+        return 1, 1  
 
-gdp_percentile = df_melted.groupby('Year')['GDP per capita'].quantile(0.90).to_dict()
-df_melted['Capped GDP per capita'] = df_melted.apply(lambda row: min(row['GDP per capita'], gdp_percentile[row['Year']]), axis=1)
+# Function to process results and calculate points for each round
+def calculate_table(dataframe, max_kolejka):
+    table = {}
+    goals = {}
 
-fig = px.choropleth(df_melted, 
-                    locations='Country', 
-                    locationmode='country names',
-                    color='Capped GDP per capita',  
-                    hover_name='Country', 
-                    hover_data={'GDP per capita': True, 'Year': True},  
-                    animation_frame='Year',  
-                    color_continuous_scale='RdYlGn',
-                    title='GDP per Capita Over Time (Capped at 90th Percentile)')
+    for index, row in dataframe.iterrows():
+        if row['Kolejka'] > max_kolejka:
+            continue
 
-fig.update_layout(
-    coloraxis_colorbar={'title': 'GDP per Capita'},
-    sliders=[{'currentvalue': {"prefix": "Year: "}}],
-    updatemenus=[{
-        'buttons': [
-            {'args': [None, {'frame': {'duration': 500, 'redraw': True}, 'fromcurrent': True}], 'label': 'Play', 'method': 'animate'},
-            {'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'mode': 'immediate'}], 'label': 'Pause', 'method': 'animate'}
-        ],
-        'direction': 'left',
-        'pad': {'r': 10, 't': 87},
-        'showactive': False,
-        'type': 'buttons',
-        'x': 0.1,
-        'xanchor': 'right',
-        'y': 0,
-        'yanchor': 'top'
-    }],
-    # Increase the width and height to make it look larger, close to full-screen
-    width=1200,   # Adjust as needed
-    height=700,  # Adjust as needed
-    margin={"r":0,"t":50,"l":0,"b":0},  # Reduce margins to get more space
+        home_team = row['Druzyna G']
+        away_team = row['Druzyna G.1']
+        wynik = row['Wynik']
+
+        home_goals, away_goals = map(int, wynik.split())
+
+        home_points, away_points = calculate_points(home_goals, away_goals)
+
+        if home_team not in table:
+            table[home_team] = 0
+            goals[home_team] = [0, 0]  
+        if away_team not in table:
+            table[away_team] = 0
+            goals[away_team] = [0, 0]
+
+        table[home_team] += home_points
+        table[away_team] += away_points
+
+        goals[home_team][0] += home_goals  
+        goals[home_team][1] += away_goals  
+        goals[away_team][0] += away_goals  
+        goals[away_team][1] += home_goals  
+
+    table_df = pd.DataFrame(list(table.items()), columns=['Druzyna', 'Punkty']).sort_values(by='Punkty', ascending=False)
+    goals_df = pd.DataFrame([(team, f"{scored}:{conceded}", scored - conceded, scored) 
+                             for team, (scored, conceded) in goals.items()],
+                            columns=['Druzyna', 'Gole', 'Różnica Bramkowa', 'Gole Strzelone']).set_index('Druzyna')
+
+    table_df = table_df.set_index('Druzyna').join(goals_df).reset_index()
+
+    table_df = table_df.sort_values(by=['Punkty', 'Różnica Bramkowa', 'Gole Strzelone'], ascending=[False, False, False])
+
+    table_df['Miejsce'] = range(1, len(table_df) + 1)
+
+    return table_df[['Miejsce', 'Druzyna', 'Punkty', 'Gole']]
+
+# Function to calculate the dynamic chart data with animation
+def calculate_chart_with_animation(dataframe, max_kolejka):
+    teams = sorted(dataframe['Druzyna G'].unique())
+    frames = []
+    initial_data = []
+    all_points = {team: [0] for team in teams}  
+
+    for i in range(1, max_kolejka + 1):
+        for team in teams:
+            team_data = dataframe[(dataframe['Druzyna G'] == team) | (dataframe['Druzyna G.1'] == team)]
+            points = all_points[team][-1]  
+
+            relevant_matches = team_data[team_data['Kolejka'] == i]
+            for _, match in relevant_matches.iterrows():
+                if match['Druzyna G'] == team:
+                    home_goals, away_goals = map(int, match['Wynik'].split())
+                    home_points, _ = calculate_points(home_goals, away_goals)
+                    points += home_points
+                elif match['Druzyna G.1'] == team:
+                    home_goals, away_goals = map(int, match['Wynik'].split())
+                    _, away_points = calculate_points(home_goals, away_goals)
+                    points += away_points
+
+            all_points[team].append(points)
+
+    for i in range(1, max_kolejka + 1):
+        frame_data = []
+        for team in teams:
+            frame_data.append(go.Scatter(
+                x=list(range(1, i + 1)), 
+                y=all_points[team][:i + 1], 
+                mode='lines+markers', 
+                name=team, 
+                hoverinfo='text',
+                text=[f"{team}: {points} points" for points in all_points[team][:i + 1]],  
+                line=dict(color=team_colors.get(team, 'gray'), shape='spline')  
+            ))
+
+        frames.append(go.Frame(data=frame_data, name=str(i)))
+
+    for team in teams:
+        initial_data.append(go.Scatter(
+            x=[1], y=[0], mode='lines+markers', name=team, line=dict(color=team_colors.get(team, 'gray'), shape='spline')
+        ))
+
+    return initial_data, frames
+
+# Streamlit app layout
+st.title('Tabela Ligowa')
+
+# Slider for selecting "Kolejka"
+selected_kolejka = st.slider(
+    'Wybierz Kolejkę',
+    min_value=int(df['Kolejka'].min()),
+    max_value=int(df['Kolejka'].max()),
+    value=int(df['Kolejka'].min())
 )
 
-# Display the interactive Plotly chart in Streamlit
-st.plotly_chart(fig, use_container_width=True)
+# Display the league table
+st.subheader('Tabela')
+table_df = calculate_table(df, selected_kolejka)
+st.dataframe(table_df)
+
+# Display the animated points chart
+st.subheader('Points Over Time')
+
+initial_data, frames = calculate_chart_with_animation(df, df['Kolejka'].max())
+
+max_points = max(table_df['Punkty']) if not table_df.empty else 10
+
+fig = go.Figure(
+    data=initial_data,
+    layout=go.Layout(
+        title='Points Over Time',
+        xaxis={'title': 'Kolejka', 'range': [1, df['Kolejka'].max()]},
+        yaxis={'title': 'Points', 'range': [0, max_points]},
+        plot_bgcolor='black',
+        paper_bgcolor='black',
+        font=dict(color="white"),
+        sliders=[{
+            'steps': [{'args': [[str(k)], {'frame': {'duration': 1000, 'redraw': True}, 'mode': 'immediate'}], 
+                       'label': str(k), 'method': 'animate'} for k in range(1, df['Kolejka'].max() + 1)],
+            'currentvalue': {'prefix': 'Kolejka: ', 'font': {'color': 'white'}}
+        }]
+    ),
+    frames=frames
+)
+
+# Display the chart in Streamlit
+st.plotly_chart(fig)
