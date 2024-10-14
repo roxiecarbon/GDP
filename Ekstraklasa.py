@@ -2,45 +2,49 @@ import pandas as pd
 import dash
 from dash import dcc, html
 from dash.dash_table import DataTable
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 
-# Wczytanie danych z pliku Excel
-file_path = r'C:\Users\Ja\Downloads\Zeszyt1.xlsx'  # Ścieżka do pliku
-sheet_name = 'Z'  # Nazwa arkusza, zmień na właściwą jeśli jest inna
+# Load data from Excel
+file_path = r'C:\Users\Ja\Downloads\Zeszyt1.xlsx'  # Path to file
+sheet_name = 'Z'  # Sheet name, change if different
 
-# Wczytaj dane z Excela
+# Read data from Excel
 df = pd.read_excel(file_path, sheet_name=sheet_name)
 
-# Przekonwertuj kolumnę 'Wynik' na tekst
+# Convert the 'Wynik' column to string
 df['Wynik'] = df['Wynik'].astype(str)
 
-# Lista drużyn do podświetlenia
-highlighted_teams = ['Puszcza Niepołomice', 'Lechia Gdańsk', 'Radomiak Radom', 'Korona Kielce',
-                     'Zagłębie Lubin', 'Piast Gliwice', 'Górnik Zabrze', 'Raków Częstochowa']
-
-# Kolory przypisane do drużyn
+# Assigned team colors
 team_colors = {
-    'Puszcza Niepołomice': 'lightcoral',
-    'Lechia Gdańsk': 'lightgreen',
-    'Radomiak Radom': 'lightblue',
-    'Korona Kielce': 'lightyellow',
-    'Zagłębie Lubin': 'lightpink',
-    'Piast Gliwice': 'lightsalmon',
-    'Górnik Zabrze': 'lightcyan',
-    'Raków Częstochowa': 'lightgoldenrodyellow'
+    'Stal Rzeszów ': 'blue',  
+    'Arka Gdynia ': 'yellow',           
+    'Miedź Legnica ': 'green',           
+    'Chrobry Głogów ': 'orange',       
+    'Motor Lublin ': 'yellow',          
+    'Znicz Pruszków ': 'red',                  
+    'Polonia Warszawa ': 'black',              
+    'Górnik Łęczna ': 'green',           
+    'Podbeskidzie Bielsko:Biała ': 'red',             
+    'Zagłębie Sosnowiec ': 'green',     
+    'Lechia Gdańsk ': 'white',           
+    'GKS Katowice': 'yellow',          
+    'Bruk:Bet Termalica Nieciecza ': 'orange',               
+    'Wisła Kraków ': 'red',         
+    'Wisła Płock ': 'blue',            
+    'Resovia ': 'red',          
 }
 
-# Funkcja do obliczania punktów na podstawie wyniku
+# Function to calculate points based on match result
 def calculate_points(home_goals, away_goals):
     if home_goals > away_goals:
-        return 3, 0  # Gospodarz wygrywa, 3 punkty dla gospodarza
+        return 3, 0  
     elif home_goals < away_goals:
-        return 0, 3  # Gość wygrywa, 3 punkty dla gościa
+        return 0, 3  
     else:
-        return 1, 1  # Remis, po 1 punkcie
+        return 1, 1  
 
-# Przetwarzanie wyników i obliczanie punktów dla każdej drużyny po danej kolejce
+# Function to process results and calculate points for each round
 def calculate_table(dataframe, max_kolejka):
     table = {}
     goals = {}
@@ -57,54 +61,47 @@ def calculate_table(dataframe, max_kolejka):
 
         home_points, away_points = calculate_points(home_goals, away_goals)
 
-        # Initialize team points and goals if not already in the table
         if home_team not in table:
             table[home_team] = 0
-            goals[home_team] = [0, 0]  # [scored, conceded]
+            goals[home_team] = [0, 0]  
         if away_team not in table:
             table[away_team] = 0
             goals[away_team] = [0, 0]
 
-        # Update points
         table[home_team] += home_points
         table[away_team] += away_points
 
-        # Update goals
-        goals[home_team][0] += home_goals  # Home team scored
-        goals[home_team][1] += away_goals  # Home team conceded
-        goals[away_team][0] += away_goals  # Away team scored
-        goals[away_team][1] += home_goals  # Away team conceded
+        goals[home_team][0] += home_goals  
+        goals[home_team][1] += away_goals  
+        goals[away_team][0] += away_goals  
+        goals[away_team][1] += home_goals  
 
-    # Create the final table with teams, points, goals, and goal difference
     table_df = pd.DataFrame(list(table.items()), columns=['Druzyna', 'Punkty']).sort_values(by='Punkty', ascending=False)
     goals_df = pd.DataFrame([(team, f"{scored}:{conceded}", scored - conceded, scored) 
                              for team, (scored, conceded) in goals.items()],
                             columns=['Druzyna', 'Gole', 'Różnica Bramkowa', 'Gole Strzelone']).set_index('Druzyna')
 
-    # Merge the points table with the goals table
     table_df = table_df.set_index('Druzyna').join(goals_df).reset_index()
 
-    # Sort by Points, Goal Difference, and Goals Scored
     table_df = table_df.sort_values(by=['Punkty', 'Różnica Bramkowa', 'Gole Strzelone'], ascending=[False, False, False])
 
-    # Add ranking column
     table_df['Miejsce'] = range(1, len(table_df) + 1)
 
     return table_df[['Miejsce', 'Druzyna', 'Punkty', 'Gole']]
 
-# Function to calculate the dynamic chart data
-def calculate_chart(dataframe, max_kolejka):
-    teams = dataframe['Druzyna G'].unique()
-    line_data = []
+# Function to calculate the dynamic chart data with animation
+def calculate_chart_with_animation(dataframe, max_kolejka):
+    teams = sorted(dataframe['Druzyna G'].unique())  # Alphabetically sorted
+    frames = []
+    initial_data = []
+    all_points = {team: [0] for team in teams}  # Collect points for each team over time
 
-    for team in teams:
-        team_data = dataframe[(dataframe['Druzyna G'] == team) | (dataframe['Druzyna G.1'] == team)]
-        points_over_time = []
-        
-        for i in range(1, max_kolejka + 1):
-            relevant_matches = team_data[team_data['Kolejka'] <= i]
-            points = 0
-            
+    for i in range(1, max_kolejka + 1):
+        for team in teams:
+            team_data = dataframe[(dataframe['Druzyna G'] == team) | (dataframe['Druzyna G.1'] == team)]
+            points = all_points[team][-1]  # Start with the last known points
+
+            relevant_matches = team_data[team_data['Kolejka'] == i]
             for _, match in relevant_matches.iterrows():
                 if match['Druzyna G'] == team:
                     home_goals, away_goals = map(int, match['Wynik'].split())
@@ -115,22 +112,44 @@ def calculate_chart(dataframe, max_kolejka):
                     _, away_points = calculate_points(home_goals, away_goals)
                     points += away_points
 
-            points_over_time.append(points)
+            all_points[team].append(points)  # Append the new points for the team
 
-        line_data.append(go.Scatter(x=list(range(1, max_kolejka + 1)), y=points_over_time, mode='lines', name=team))
+    # Generate frames for each kolejka
+    for i in range(1, max_kolejka + 1):
+        frame_data = []
+        for team in teams:
+            # Update each team's line for the current frame
+            frame_data.append(go.Scatter(
+                x=list(range(1, i + 1)), 
+                y=all_points[team][:i + 1], 
+                mode='lines+markers', 
+                name=team, 
+                hoverinfo='text',
+                text=[f"{team}: {points} points" for points in all_points[team][:i + 1]],  
+                line=dict(color=team_colors.get(team, 'gray'), shape='spline')  
+            ))
 
-    return line_data
+        frames.append(go.Frame(data=frame_data, name=str(i)))
 
-# Uruchomienie aplikacji Dash z interaktywną tabelą
+    # Initial data setup
+    for team in teams:
+        initial_data.append(go.Scatter(
+            x=[1], y=[0], mode='lines+markers', name=team, line=dict(color=team_colors.get(team, 'gray'), shape='spline')
+        ))
+
+    return initial_data, frames
+
+
+# Run the Dash app
 app = dash.Dash(__name__)
 
 app.layout = html.Div(style={'display': 'flex', 'flexDirection': 'row'}, children=[
-    # Left side with table and slider
     html.Div(style={'width': '50%', 'padding': '10px'}, children=[
         html.H1(children='Tabela Ligowa'),
 
+        # Slider for the table
         dcc.Slider(
-            id='kolejka-slider',
+            id='kolejka-slider-table',
             min=df['Kolejka'].min(),
             max=df['Kolejka'].max(),
             value=df['Kolejka'].min(),  # Start from the first round
@@ -138,34 +157,22 @@ app.layout = html.Div(style={'display': 'flex', 'flexDirection': 'row'}, childre
             step=None,
             tooltip={"placement": "bottom", "always_visible": True}
         ),
-        html.Div(style={'marginTop': '20px', 'textAlign': 'center'}, children=[
-            html.Button("Play", id="play-button", n_clicks=0, style={'marginRight': '10px'}),
-            html.Button("Stop", id="stop-button", n_clicks=0),
-        ]),
 
-        dcc.Interval(
-            id='interval',
-            interval=2000,  # 2 seconds interval between updates
-            n_intervals=0,
-            disabled=True  # Initially disabled until "Play" is pressed
-        ),
-        
         DataTable(
             id='football-table',
             columns=[{"name": i, "id": i} for i in ['Miejsce', 'Druzyna', 'Punkty', 'Gole']],
             data=[],  
-            style_cell={'textAlign': 'center', 'fontSize': '10px'},  # Reduced font size
+            style_cell={'textAlign': 'center', 'fontSize': '10px'},  
             style_header={
                 'backgroundColor': 'lightblue',
                 'fontWeight': 'bold',
-                'fontSize': '12px'  # Header font size
+                'fontSize': '12px'  
             },
             style_data_conditional=[
                 {
                     'if': {'row_index': 'odd'},
                     'backgroundColor': 'lightgrey',
                 },
-                # Add colors for specific teams
                 *[
                     {
                         'if': {'filter_query': f'{{Druzyna}} = "{team}"'},
@@ -175,63 +182,95 @@ app.layout = html.Div(style={'display': 'flex', 'flexDirection': 'row'}, childre
                 ]
             ],
             page_action='none',
-            style_table={'height': '350px', 'overflowY': 'auto', 'width': '70%', 'margin': 'auto'},  # Reduced height and width
+            style_table={'height': '350px', 'overflowY': 'auto', 'width': '70%', 'margin': 'auto'},  
         )
     ]),
 
-    # Right side with dynamic line chart
     html.Div(style={'width': '50%', 'padding': '10px'}, children=[
         dcc.Graph(
             id='dynamic-line-chart',
             style={'height': '400px'}
-        )
+        ),
     ])
 ])
 
-# Callback to update the slider during animation
-@app.callback(
-    Output('kolejka-slider', 'value'),
-    [Input('interval', 'n_intervals')],
-    [State('kolejka-slider', 'value')]
-)
-def update_slider(n_intervals, current_value):
-    if current_value < df['Kolejka'].max():
-        return current_value + 1
-    else:
-        return df['Kolejka'].min()
-
-# Callback to update the table based on the selected 'kolejka'
+# Callback for updating the table based on the slider
 @app.callback(
     Output('football-table', 'data'),
-    [Input('kolejka-slider', 'value')]
+    Input('kolejka-slider-table', 'value')  # ONLY connected to the table now
 )
 def update_table(selected_kolejka):
     table_df = calculate_table(df, selected_kolejka)
-    return table_df.to_dict('records')
+    table_data = table_df.to_dict('records')
+    return table_data
 
-# Callback to control the play/pause button for animation
-@app.callback(
-    Output('interval', 'disabled'),
-    [Input('play-button', 'n_clicks'), Input('stop-button', 'n_clicks')],
-    [State('interval', 'disabled')]
-)
-def play_pause(play_clicks, stop_clicks, interval_disabled):
-    ctx = dash.callback_context
-    if ctx.triggered:
-        if ctx.triggered[0]['prop_id'] == 'play-button.n_clicks':
-            return False  # Start the interval
-        elif ctx.triggered[0]['prop_id'] == 'stop-button.n_clicks':
-            return True  # Stop the interval
-    return interval_disabled
 
-# Callback to update the line chart based on the selected 'kolejka'
+# Dynamic chart with animation, no connection to the top-left slider
 @app.callback(
     Output('dynamic-line-chart', 'figure'),
-    [Input('kolejka-slider', 'value')]
+    Input('dynamic-line-chart', 'relayoutData')  # Use the internal chart for updates
 )
-def update_line_chart(selected_kolejka):
-    line_data = calculate_chart(df, selected_kolejka)
-    return {'data': line_data, 'layout': go.Layout(title='Points Over Time', xaxis={'title': 'Kolejka'}, yaxis={'title': 'Points'})}
+def update_chart(_):
+    initial_data, frames = calculate_chart_with_animation(df, df['Kolejka'].max())
+
+    # Max cumulative points across all teams
+    all_points = []
+    for team in df['Druzyna G'].unique():
+        team_data = df[(df['Druzyna G'] == team) | (df['Druzyna G.1'] == team)]
+        team_points = 0
+        for _, match in team_data.iterrows():
+            home_goals, away_goals = map(int, match['Wynik'].split())
+            if match['Druzyna G'] == team:
+                home_points, _ = calculate_points(home_goals, away_goals)
+                team_points += home_points
+            elif match['Druzyna G.1'] == team:
+                _, away_points = calculate_points(home_goals, away_goals)
+                team_points += away_points
+        all_points.append(team_points)
+
+    max_points = max(all_points) if all_points else 10  # Dynamic y-axis limit
+
+    fig = {
+        'data': initial_data,
+        'layout': go.Layout(
+            title='Points Over Time',
+            xaxis={'title': 'Kolejka', 'range': [1, df['Kolejka'].max()]},
+            yaxis={'title': 'Points', 'range': [0, max_points]},  # Dynamic y-axis limit based on max cumulative points
+            plot_bgcolor='black',
+            paper_bgcolor='black',
+            font=dict(color="white"),
+            legend=dict(
+                title='Teams',
+                traceorder='normal',
+                font=dict(color="white")
+            ),
+            updatemenus=[{
+                'type': 'buttons',
+                'showactive': False,
+                'buttons': [
+                    {
+                        'label': 'Play',
+                        'method': 'animate',
+                        'args': [None, {'frame': {'duration': 1000, 'redraw': True}, 'fromcurrent': True}]
+                    },
+                    {
+                        'label': 'Pause',
+                        'method': 'animate',
+                        'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'mode': 'immediate'}]
+                    }
+                ]
+            }],
+            sliders=[{  # This is the internal slider controlling the matchday and animation
+                'steps': [{'args': [[str(k)], {'frame': {'duration': 1000, 'redraw': True}, 'mode': 'immediate'}], 
+                           'label': str(k), 'method': 'animate'} for k in range(1, df['Kolejka'].max() + 1)],
+                'currentvalue': {'prefix': 'Kolejka: ', 'font': {'color': 'white'}}
+            }]
+        ),
+        'frames': frames
+    }
+
+    return fig
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
