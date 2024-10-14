@@ -1,10 +1,9 @@
 import pandas as pd
 import plotly.graph_objs as go
 import streamlit as st
-# Provide the correct raw URL of the Excel file hosted on GitHub
-file_url = 'https://github.com/roxiecarbon/GDP/raw/main/Zeszyt1.xlsx'
 
 # Load the Excel file from the GitHub URL
+file_url = 'https://github.com/roxiecarbon/GDP/raw/main/Zeszyt1.xlsx'
 df = pd.read_excel(file_url)
 
 # Convert the 'Wynik' column to string
@@ -86,15 +85,15 @@ def calculate_table(dataframe, max_kolejka):
 
 # Function to calculate the dynamic chart data with animation
 def calculate_chart_with_animation(dataframe, max_kolejka):
-    teams = sorted(dataframe['Druzyna G'].unique())  # Alphabetically sorted
+    teams = sorted(dataframe['Druzyna G'].unique())
     frames = []
     initial_data = []
-    all_points = {team: [0] for team in teams}  # Collect points for each team over time
+    all_points = {team: [0] for team in teams}  
 
     for i in range(1, max_kolejka + 1):
         for team in teams:
             team_data = dataframe[(dataframe['Druzyna G'] == team) | (dataframe['Druzyna G.1'] == team)]
-            points = all_points[team][-1]  # Start with the last known points
+            points = all_points[team][-1]  
 
             relevant_matches = team_data[team_data['Kolejka'] == i]
             for _, match in relevant_matches.iterrows():
@@ -107,13 +106,11 @@ def calculate_chart_with_animation(dataframe, max_kolejka):
                     _, away_points = calculate_points(home_goals, away_goals)
                     points += away_points
 
-            all_points[team].append(points)  # Append the new points for the team
+            all_points[team].append(points)
 
-    # Generate frames for each kolejka
     for i in range(1, max_kolejka + 1):
         frame_data = []
         for team in teams:
-            # Update each team's line for the current frame
             frame_data.append(go.Scatter(
                 x=list(range(1, i + 1)), 
                 y=all_points[team][:i + 1], 
@@ -126,7 +123,6 @@ def calculate_chart_with_animation(dataframe, max_kolejka):
 
         frames.append(go.Frame(data=frame_data, name=str(i)))
 
-    # Initial data setup
     for team in teams:
         initial_data.append(go.Scatter(
             x=[1], y=[0], mode='lines+markers', name=team, line=dict(color=team_colors.get(team, 'gray'), shape='spline')
@@ -134,138 +130,46 @@ def calculate_chart_with_animation(dataframe, max_kolejka):
 
     return initial_data, frames
 
+# Streamlit app layout
+st.title('Tabela Ligowa')
 
-# Run the Dash app
-app = dash.Dash(__name__)
-
-app.layout = html.Div(style={'display': 'flex', 'flexDirection': 'row'}, children=[
-    html.Div(style={'width': '50%', 'padding': '10px'}, children=[
-        html.H1(children='Tabela Ligowa'),
-
-        # Slider for the table
-        dcc.Slider(
-            id='kolejka-slider-table',
-            min=df['Kolejka'].min(),
-            max=df['Kolejka'].max(),
-            value=df['Kolejka'].min(),  # Start from the first round
-            marks={str(k): str(k) for k in df['Kolejka'].unique()},
-            step=None,
-            tooltip={"placement": "bottom", "always_visible": True}
-        ),
-
-        DataTable(
-            id='football-table',
-            columns=[{"name": i, "id": i} for i in ['Miejsce', 'Druzyna', 'Punkty', 'Gole']],
-            data=[],  
-            style_cell={'textAlign': 'center', 'fontSize': '10px'},  
-            style_header={
-                'backgroundColor': 'lightblue',
-                'fontWeight': 'bold',
-                'fontSize': '12px'  
-            },
-            style_data_conditional=[
-                {
-                    'if': {'row_index': 'odd'},
-                    'backgroundColor': 'lightgrey',
-                },
-                *[
-                    {
-                        'if': {'filter_query': f'{{Druzyna}} = "{team}"'},
-                        'backgroundColor': color
-                    }
-                    for team, color in team_colors.items()
-                ]
-            ],
-            page_action='none',
-            style_table={'height': '350px', 'overflowY': 'auto', 'width': '70%', 'margin': 'auto'},  
-        )
-    ]),
-
-    html.Div(style={'width': '50%', 'padding': '10px'}, children=[
-        dcc.Graph(
-            id='dynamic-line-chart',
-            style={'height': '400px'}
-        ),
-    ])
-])
-
-# Callback for updating the table based on the slider
-@app.callback(
-    Output('football-table', 'data'),
-    Input('kolejka-slider-table', 'value')  # ONLY connected to the table now
+# Slider for selecting "Kolejka"
+selected_kolejka = st.slider(
+    'Wybierz Kolejkę',
+    min_value=int(df['Kolejka'].min()),
+    max_value=int(df['Kolejka'].max()),
+    value=int(df['Kolejka'].min())
 )
-def update_table(selected_kolejka):
-    table_df = calculate_table(df, selected_kolejka)
-    table_data = table_df.to_dict('records')
-    return table_data
 
+# Display the league table
+st.subheader('Tabela')
+table_df = calculate_table(df, selected_kolejka)
+st.dataframe(table_df)
 
-# Dynamic chart with animation, no connection to the top-left slider
-@app.callback(
-    Output('dynamic-line-chart', 'figure'),
-    Input('dynamic-line-chart', 'relayoutData')  # Use the internal chart for updates
+# Display the animated points chart
+st.subheader('Points Over Time')
+
+initial_data, frames = calculate_chart_with_animation(df, df['Kolejka'].max())
+
+max_points = max(table_df['Punkty']) if not table_df.empty else 10
+
+fig = go.Figure(
+    data=initial_data,
+    layout=go.Layout(
+        title='Points Over Time',
+        xaxis={'title': 'Kolejka', 'range': [1, df['Kolejka'].max()]},
+        yaxis={'title': 'Points', 'range': [0, max_points]},
+        plot_bgcolor='black',
+        paper_bgcolor='black',
+        font=dict(color="white"),
+        sliders=[{
+            'steps': [{'args': [[str(k)], {'frame': {'duration': 1000, 'redraw': True}, 'mode': 'immediate'}], 
+                       'label': str(k), 'method': 'animate'} for k in range(1, df['Kolejka'].max() + 1)],
+            'currentvalue': {'prefix': 'Kolejka: ', 'font': {'color': 'white'}}
+        }]
+    ),
+    frames=frames
 )
-def update_chart(_):
-    initial_data, frames = calculate_chart_with_animation(df, df['Kolejka'].max())
 
-    # Max cumulative points across all teams
-    all_points = []
-    for team in df['Druzyna G'].unique():
-        team_data = df[(df['Druzyna G'] == team) | (df['Druzyna G.1'] == team)]
-        team_points = 0
-        for _, match in team_data.iterrows():
-            home_goals, away_goals = map(int, match['Wynik'].split())
-            if match['Druzyna G'] == team:
-                home_points, _ = calculate_points(home_goals, away_goals)
-                team_points += home_points
-            elif match['Druzyna G.1'] == team:
-                _, away_points = calculate_points(home_goals, away_goals)
-                team_points += away_points
-        all_points.append(team_points)
-
-    max_points = max(all_points) if all_points else 10  # Dynamic y-axis limit
-
-    fig = {
-        'data': initial_data,
-        'layout': go.Layout(
-            title='Points Over Time',
-            xaxis={'title': 'Kolejka', 'range': [1, df['Kolejka'].max()]},
-            yaxis={'title': 'Points', 'range': [0, max_points]},  # Dynamic y-axis limit based on max cumulative points
-            plot_bgcolor='black',
-            paper_bgcolor='black',
-            font=dict(color="white"),
-            legend=dict(
-                title='Teams',
-                traceorder='normal',
-                font=dict(color="white")
-            ),
-            updatemenus=[{
-                'type': 'buttons',
-                'showactive': False,
-                'buttons': [
-                    {
-                        'label': 'Play',
-                        'method': 'animate',
-                        'args': [None, {'frame': {'duration': 1000, 'redraw': True}, 'fromcurrent': True}]
-                    },
-                    {
-                        'label': 'Pause',
-                        'method': 'animate',
-                        'args': [[None], {'frame': {'duration': 0, 'redraw': False}, 'mode': 'immediate'}]
-                    }
-                ]
-            }],
-            sliders=[{  # This is the internal slider controlling the matchday and animation
-                'steps': [{'args': [[str(k)], {'frame': {'duration': 1000, 'redraw': True}, 'mode': 'immediate'}], 
-                           'label': str(k), 'method': 'animate'} for k in range(1, df['Kolejka'].max() + 1)],
-                'currentvalue': {'prefix': 'Kolejka: ', 'font': {'color': 'white'}}
-            }]
-        ),
-        'frames': frames
-    }
-
-    return fig
-
-
-if __name__ == '__main__':
-    app.run_server(debug=True)
+# Display the chart in Streamlit
+st.plotly_chart(fig)
