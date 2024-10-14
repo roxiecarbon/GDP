@@ -1,6 +1,6 @@
-import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
+import streamlit as st
 
 # Load the Excel file from the GitHub URL
 file_url = 'https://github.com/roxiecarbon/GDP/raw/main/Zeszyt1.xlsx'
@@ -162,15 +162,14 @@ fig = go.Figure(
         plot_bgcolor='black',
         paper_bgcolor='black',
         font=dict(color="white"),
-    )
+        sliders=[{
+            'steps': [{'args': [[str(k)], {'frame': {'duration': 1000, 'redraw': True}, 'mode': 'immediate'}], 
+                       'label': str(k), 'method': 'animate'} for k in range(1, df['Kolejka'].max() + 1)],
+            'currentvalue': {'prefix': 'Kolejka: ', 'font': {'color': 'white'}}
+        }]
+    ),
+    frames=frames
 )
 
-# Manually create Play/Pause functionality in Streamlit
-if st.button('Play'):
-    for i in range(1, df['Kolejka'].max() + 1):
-        # Update the chart as the frames progress
-        frame_data = frames[i-1]['data']
-        fig.update_traces(frame_data)
-        st.plotly_chart(fig)
-
+# Display the chart in Streamlit
 st.plotly_chart(fig)
