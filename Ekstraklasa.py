@@ -5,12 +5,11 @@ from dash.dash_table import DataTable
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 
-# Load data from Excel
-file_path = r'C:\Users\Ja\Downloads\Zeszyt1.xlsx'  # Path to file
-sheet_name = 'Z'  # Sheet name, change if different
+# Provide the correct raw URL of the Excel file hosted on GitHub
+file_url = 'https://github.com/roxiecarbon/GDP/raw/main/Zeszyt1.xlsx'
 
-# Read data from Excel
-df = pd.read_excel(file_path, sheet_name=sheet_name)
+# Load the Excel file from the GitHub URL
+df = pd.read_excel(file_url)
 
 # Convert the 'Wynik' column to string
 df['Wynik'] = df['Wynik'].astype(str)
